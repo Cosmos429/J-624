@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETS-J624 – Gestion Graviers, Sables et Voyages</title>
+<style>
+:root{--primary:#2c3e50;--secondary:#27ae60;--danger:#e74c3c;--light:#f4f7f6;--accent:#c57eee}
+*{box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:var(--light);color:var(--primary);margin:0;padding:20px}
+nav{background:var(--accent);padding:10px;border-radius:8px;margin-bottom:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+nav button{background:transparent;color:#fff;border:2px solid transparent;padding:10px 20px;border-radius:6px;font-weight:bold;font-size:15px;cursor:pointer;width:auto;margin:0}
+nav button.active{background:#fff;color:var(--primary)}
+.container{max-width:1100px;margin:auto;background:#fff;padding:30px;border-radius:12px;box-shadow:0 5px 15px rgba(0,0,0,.1)}
+h1{text-align:center;border-bottom:2px solid var(--secondary);padding-bottom:10px;margin-top:0}
+h2{margin-top:30px}
+.page{display:none}.page.active{display:block}
+.form-group{display:flex;gap:20px;margin-bottom:15px;flex-wrap:wrap}
+.form-group>div{flex:1;min-width:180px}
+label{display:block;margin-bottom:5px;font-weight:bold}
+input,select{width:100%;padding:10px;border:1px solid #ddd;border-radius:6px}
+.check{display:flex;align-items:center;gap:8px;margin:5px 0 15px}
+.check input{width:auto}
+.btn{background:var(--secondary);color:#fff;padding:12px 25px;border:none;border-radius:6px;cursor:pointer;font-size:16px;transition:.3s}
+.btn:hover{background:#219150}
+.btn.blue{background:#2980b9}.btn.blue:hover{background:#21618c}
+.center{text-align:center}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;margin-top:20px}
+th{background:var(--primary);color:#fff;padding:12px;text-align:center}
+td{padding:10px;border-bottom:1px solid #ddd;text-align:center}
+tfoot td{background:#333;color:#fff;font-weight:bold}
+tr.sep td{background:#000;padding:2px;border:0}
+.status-btn{padding:6px 12px;border-radius:4px;cursor:pointer;font-weight:bold;font-size:14px;border:1px solid}
+.status-paid{background:#d4edda;color:#155724;border-color:#c3e6cb}
+.status-pending{background:#f8d7da;color:#721c24;border-color:#f5c6cb}
+.del{background:none;border:none;color:var(--danger);cursor:pointer;font-size:18px}
+.stats{display:flex;gap:20px;margin:20px 0;flex-wrap:wrap}
+.stat{flex:1;min-width:200px;padding:20px;border-radius:10px;text-align:center;box-shadow:0 4px 6px rgba(0,0,0,.1)}
+.stat h3{margin:0 0 10px;font-size:1rem}.stat p{margin:0;font-size:1.5rem;font-weight:bold}
+.stat.paid{background:#d4edda;color:#155724;border-left:5px solid #28a745}
+.stat.pending{background:#f8d7da;color:#721c24;border-left:5px solid #dc3545}
+.total{margin-top:20px;font-size:20px;text-align:center;font-weight:bold}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;background:#f9fafb;padding:16px;border-radius:8px;margin-bottom:16px}
+.hint{font-size:13px;color:#777;margin:6px 0 0}
+.entry input{min-width:90px;padding:6px}.entry td{padding:4px}.entry .n{font-weight:bold;width:34px}.toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:99;max-width:90%;padding:14px 22px;border-radius:8px;color:#fff;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,.3);cursor:pointer;display:none}
+.toast.ok{background:#27ae60}.toast.err{background:#e74c3c}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:100}
+.modal div{background:#fff;padding:24px;border-radius:10px;text-align:center;max-width:90%}
+.modal button{margin:10px 6px 0}
+.tot-label{text-align:right}
+img,table{max-width:100%}
+@media (max-width:900px){
+  .container{padding:20px}
+}
+@media (max-width:700px){
+  body{padding:8px}
+  .container{padding:14px;border-radius:8px}
+  h1{font-size:1.25rem}
+  h2{font-size:1.1rem;margin-top:22px}
+  nav{padding:6px;gap:6px}
+  nav button{flex:1;padding:10px 6px;font-size:13px}
+  .form-group{gap:10px;margin-bottom:10px}
+  .form-group>div{min-width:100%}
+  input,select{font-size:16px;padding:12px}
+  .btn{width:100%;margin:6px 0;padding:14px}
+  .stats{gap:10px}.stat{min-width:100%;padding:14px}
+  .stat p{font-size:1.2rem}
+  .total{font-size:17px}
+  .toast{width:92%;top:8px}
+  /* Tableaux -> cartes */
+  table.cards,table.cards tbody,table.cards tfoot{display:block;width:100%}
+  table.cards thead{display:none}
+  table.cards tr{display:block;border:1px solid #ddd;border-radius:8px;margin:10px 0;padding:4px 0;background:#fff}
+  table.cards td{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:right;border:0;padding:6px 12px}
+  table.cards td[data-label]::before{content:attr(data-label);font-weight:bold;text-align:left;flex:0 0 40%;color:var(--primary)}
+  table.cards td:not([data-label]){justify-content:flex-end}
+  table.cards td input{width:60%;flex:1}
+  table.cards tr.sep{border:0;padding:0;margin:14px 0;height:4px;background:#000}
+  table.cards tr.sep td{display:none}
+  table.cards tfoot tr{background:#333;color:#fff;border-color:#333}
+  table.cards tfoot td[data-label]::before{color:#fff}
+  table.cards tfoot td.tot-label{display:block;text-align:center;font-size:1.1rem}
+  table.entry tr{background:#f9fafb}
+}
+.pos{color:#155724}.neg{color:#c0392b}
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+<div id="modal" class="modal"><div><p id="modalTxt"></p><button class="btn" id="modalYes">Oui</button><button class="btn blue" id="modalNo">Non</button></div></div>
+<nav>
+  <button data-page="ventes" class="active">GESTION DE VENTES</button>
+  <button data-page="voyages">BILAN-VOYAGES</button>
+</nav>
+
+<div class="container">
+  <h1>BIENVENUE CHEZ ETS-J624</h1>
+
+  <!-- ===================== VENTES ===================== -->
+  <section id="ventes" class="page active">
+    <h2>Ajouter une vente</h2>
+    <div id="salesForm">
+      <div class="form-group">
+        <div><label for="product">Produit :</label>
+          <select id="product" required><option value="">Sélectionner un produit</option></select></div>
+        <div><label for="cubage">Cubage :</label>
+          <select id="cubage" required></select></div>
+        <div><label for="quantity">Quantité :</label>
+          <input type="number" id="quantity" min="0.1" step="0.1" value="1" required></div>
+      </div>
+      <div class="form-group">
+        <div><label for="client">Client :</label>
+          <input type="text" id="client" placeholder="Nom du client" required></div>
+        <div><label for="sdate">Date :</label>
+          <input type="date" id="sdate" required></div>
+        <div><label>Prix unitaire :</label>
+          <input type="text" id="unitPrice" readonly></div>
+      </div>
+      <label class="check"><input type="checkbox" id="paye" checked> Paiement confirmé</label>
+      <div class="center"><button type="button" id="addVente" class="btn">➕ Ajouter la vente</button></div>
+    </div>
+
+    <h2>Historique des ventes</h2>
+    <div class="stats">
+      <div class="stat paid"><h3>Total Encaissé</h3><p><span id="totalPaid">0</span> Fcfa</p></div>
+      <div class="stat pending"><h3>Total Impayés</h3><p><span id="totalPending">0</span> Fcfa</p></div>
+    </div>
+    <div class="center"><button class="btn blue" id="exportVentes">⬇ Exporter en CSV (Excel)</button></div>
+    <div class="table-wrap">
+    <table class="cards">
+      <thead><tr><th>Date</th><th>Produit</th><th>Cubage</th><th>Quantité</th><th>Prix Unitaire</th><th>Client</th><th>Total</th><th>Statut</th><th></th></tr></thead>
+      <tbody id="salesTable"></tbody>
+    </table></div>
+    <div class="total">Total des ventes : <span id="totalAmount">0</span> Fcfa</div>
+  </section>
+
+  <!-- ===================== VOYAGES ===================== -->
+  <section id="voyages" class="page">
+    <h2>Bilan-Voyages</h2>
+    <div id="tripForm">
+      <div class="form-group">
+        <div><label for="vDate">Date :</label><input type="date" id="vDate" required></div>
+        <div><label>Lignes remplies :</label><input type="text" id="vCount" readonly></div>
+      </div>
+      <div class="table-wrap">
+      <table class="entry cards">
+        <thead><tr><th>#</th><th>Désignation</th><th>Client</th><th>Vente (FCFA)</th><th>Gas-oil</th><th>Matériel</th><th>Dépenses (F.Route/Salaire)</th><th></th></tr></thead>
+        <tbody id="entryBody"></tbody>
+      </table></div>
+      <label class="check"><input type="checkbox" id="chargeUnique"> Compter gas-oil, matériel et dépenses une seule fois par jour (1re ligne seulement)</label>
+      <div class="center">
+        <button type="button" id="addRow" class="btn blue">➕ Ajouter une ligne</button>
+        <button type="button" id="addTrip" class="btn">✔ Ajouter (clôturer la journée)</button>
+      </div>
+      <p class="hint">Pour une même date, saisissez au moins 1 désignation avec sa vente et son matériel, puis validez avec « Ajouter ». Entrée = champ suivant.</p>
+    </div>
+    <button class="btn blue" id="exportVoyages">⬇ Exporter en CSV (Excel)</button>
+    <div class="table-wrap">
+    <table class="cards">
+      <thead><tr><th>Date</th><th>Désignation</th><th>Client</th><th>Vente</th><th>Gas-oil</th><th>Matériel</th><th>Dépenses</th><th>Revenu</th><th></th></tr></thead>
+      <tbody id="tripBody"></tbody>
+      <tfoot><tr>
+        <td colspan="3" class="tot-label">TOTAUX</td>
+        <td id="tVente" data-label="Vente">0</td><td id="tGasoil" data-label="Gas-oil">0</td><td id="tMat" data-label="Matériel">0</td><td id="tDep" data-label="Dépenses">0</td><td id="tRev" data-label="Revenu">0</td><td></td>
+      </tr></tfoot>
+    </table></div>
+  </section>
+</div>
+
+<script>
+/* ---------- Tarifs (issus de SABLES-GRAVIERS.py) ---------- */
+const TARIFS = {
+  "Gravier 5-15": {"1m3":11000,"Tricycle":13000,"Brouette":1500,"Bafana":1000,"Bachet":13000},
+  "Gravier 5-25": {"1m3":10500,"Tricycle":13000,"Brouette":1500,"Bafana":1000,"Bachet":13000},
+  "Sable":        {"1m3":8000, "Tricycle":9000, "Brouette":1000,"Bafana":500, "Bachet":9000}
+};
+const CUBAGES = Object.keys(TARIFS["Gravier 5-15"]);
+
+/* ---------- Utilitaires ---------- */
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n).toLocaleString('fr-FR');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today = () => new Date().toISOString().slice(0,10);
+function load(key){ try { return JSON.parse(localStorage.getItem(key)) || []; } catch(e){ return []; } }
+function save(key, v){ try { localStorage.setItem(key, JSON.stringify(v)); } catch(e){} }
+function downloadCSV(rows, name){
+  const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(';')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8'}));
+  a.download = name; a.click();
+}
+
+
+/* Messages intégrés (alert/confirm peuvent être bloqués dans certains affichages) */
+let toastTimer;
+function msg(text, ok){
+  const t = document.getElementById('toast');
+  t.textContent = text; t.className = 'toast ' + (ok ? 'ok' : 'err'); t.style.display = 'block';
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = 'none', 5000);
+  t.onclick = () => t.style.display = 'none';
+}
+function askConfirm(text, yes){
+  const m = document.getElementById('modal');
+  document.getElementById('modalTxt').textContent = text; m.style.display = 'flex';
+  document.getElementById('modalYes').onclick = () => { m.style.display = 'none'; yes(); };
+  document.getElementById('modalNo').onclick = () => m.style.display = 'none';
+}
+
+/* ---------- Navigation ---------- */
+document.querySelectorAll('nav button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === b.dataset.page));
+}));
+
+/* ==================== VENTES ==================== */
+let ventes = load('ventes');
+Object.keys(TARIFS).forEach(p => $('product').insertAdjacentHTML('beforeend', `<option>${p}</option>`));
+CUBAGES.forEach(c => $('cubage').insertAdjacentHTML('beforeend', `<option>${c}</option>`));
+$('sdate').value = today();
+
+function majPrix(){
+  const p = TARIFS[$('product').value];
+  $('unitPrice').value = p ? fmt(p[$('cubage').value]) + ' Fcfa' : '';
+}
+$('product').addEventListener('change', majPrix);
+$('cubage').addEventListener('change', majPrix);
+
+$('addVente').addEventListener('click', () => {
+  if (!$('product').value || !$('client').value.trim() || !(parseFloat($('quantity').value) > 0) || !$('sdate').value)
+    return msg('Veuillez remplir tous les champs (produit, quantité, client, date).');
+  const produit = $('product').value, cubage = $('cubage').value;
+  const qte = parseFloat($('quantity').value);
+  const prix = TARIFS[produit][cubage];
+  ventes.push({
+    id: Date.now(), date: $('sdate').value, produit, cubage, qte, prix,
+    client: $('client').value.trim(), total: prix * qte, paye: $('paye').checked
+  });
+  save('ventes', ventes);
+  $('client').value = ''; $('quantity').value = 1; $('paye').checked = true;
+  renderVentes();
+  msg('Vente ajoutée.', true);
+});
+
+function renderVentes(){
+  let paid = 0, pending = 0;
+  $('salesTable').innerHTML = ventes.map(v => {
+    v.paye ? paid += v.total : pending += v.total;
+    return `<tr>
+      <td data-label="Date">${esc(v.date)}</td><td data-label="Produit">${esc(v.produit)}</td><td data-label="Cubage">${esc(v.cubage)}</td><td data-label="Quantité">${v.qte}</td>
+      <td data-label="Prix unitaire">${fmt(v.prix)}</td><td data-label="Client">${esc(v.client)}</td><td data-label="Total">${fmt(v.total)}</td>
+      <td data-label="Statut"><button type="button" class="status-btn ${v.paye ? 'status-paid' : 'status-pending'}" onclick="toggleVente(${v.id})">${v.paye ? 'Payé' : 'Non payé'}</button></td>
+      <td><button class="del" title="Supprimer" onclick="delVente(${v.id})">🗑</button></td></tr>`;
+  }).join('');
+  $('totalPaid').textContent = fmt(paid);
+  $('totalPending').textContent = fmt(pending);
+  $('totalAmount').textContent = fmt(paid + pending);
+}
+function toggleVente(id){ const v = ventes.find(x => x.id === id); if (v){ v.paye = !v.paye; save('ventes', ventes); renderVentes(); } }
+function delVente(id){ askConfirm('Supprimer cette vente ?', () => { ventes = ventes.filter(x => x.id !== id); save('ventes', ventes); renderVentes(); }); }
+/* Totaux de quantités par jour / semaine (ISO) / mois pour l'export */
+const dec = n => String(Math.round(n * 10) / 10).replace('.', ',');
+function cleSemaine(d){
+  const [y, m, j] = d.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, j)), dow = t.getUTCDay() || 7;
+  const jeudi = new Date(t); jeudi.setUTCDate(t.getUTCDate() + 4 - dow);
+  const an = jeudi.getUTCFullYear();
+  const sem = Math.ceil(((jeudi - Date.UTC(an, 0, 1)) / 864e5 + 1) / 7);
+  const lun = new Date(t); lun.setUTCDate(t.getUTCDate() - (dow - 1));
+  const dim = new Date(lun); dim.setUTCDate(lun.getUTCDate() + 6);
+  const f = x => x.toISOString().slice(0, 10);
+  return `${an}-S${String(sem).padStart(2, '0')} (du ${f(lun)} au ${f(dim)})`;
+}
+const CATEGORIES = ['Sable', 'Gravier 5-25', 'Gravier 5-15'];
+function ligneTotaux(k, o){ return [k, ...CATEGORIES.map(c => dec(o.c[c] || 0))]; }
+function totauxPar(cleFn, titre, colonne){
+  const m = {};
+  ventes.forEach(v => {
+    const k = cleFn(v.date);
+    m[k] = m[k] || {q: 0, n: 0, c: {}};
+    m[k].q += v.qte; m[k].n++;
+    m[k].c[v.produit] = (m[k].c[v.produit] || 0) + v.qte;
+  });
+  return [[''], [titre], [colonne, ...CATEGORIES],
+    ...Object.keys(m).sort().map(k => ligneTotaux(k, m[k]))];
+}
+$('exportVentes').addEventListener('click', () => {
+  if (!ventes.length) return msg('Aucune vente à exporter.');
+  const general = {q: 0, n: ventes.length, c: {}};
+  ventes.forEach(v => { general.q += v.qte; general.c[v.produit] = (general.c[v.produit] || 0) + v.qte; });
+  downloadCSV([['Date','Produit','Cubage','Quantité','Prix Unitaire','Client','Total','Statut'],
+    ...ventes.map(v => [v.date,v.produit,v.cubage,dec(v.qte),v.prix,v.client,v.total,v.paye?'Payé':'Non payé']),
+    ...totauxPar(d => d, 'TOTAL PAR JOUR', 'Jour'),
+    ...totauxPar(cleSemaine, 'TOTAL PAR SEMAINE', 'Semaine'),
+    ...totauxPar(d => d.slice(0, 7), 'TOTAL PAR MOIS', 'Mois'),
+    [''], ligneTotaux('TOTAL GÉNÉRAL', general)],
+    `Rapport_Ventes_${today()}.csv`);
+});
+
+/* ==================== VOYAGES ==================== */
+let voyages = load('voyages');
+$('vDate').value = today();
+
+const MIN_LIGNES = 1;
+const num = v => parseFloat(v) || 0;
+function addRow(){
+  const n = $('entryBody').rows.length + 1;
+  $('entryBody').insertAdjacentHTML('beforeend', `<tr>
+    <td class="n" data-label="Ligne">${n}</td>
+    <td data-label="Désignation"><input type="text" class="e-design" placeholder="Désignation"></td>
+    <td data-label="Client"><input type="text" class="e-client" placeholder="Client"></td>
+    <td data-label="Vente (FCFA)"><input type="number" class="e-vente" min="0"></td>
+    <td data-label="Gas-oil"><input type="number" class="e-gasoil" min="0"></td>
+    <td data-label="Matériel"><input type="number" class="e-mat" min="0"></td>
+    <td data-label="Dépenses"><input type="number" class="e-dep" min="0"></td>
+    <td>${n > MIN_LIGNES ? '<button type="button" class="del" title="Retirer la ligne" onclick="this.closest(\'tr\').remove();renumber()">✖</button>' : ''}</td></tr>`);
+  majCount();
+}
+function renumber(){ [...$('entryBody').rows].forEach((tr,i) => tr.querySelector('.n').textContent = i+1); majCount(); }
+function filledRows(){ return [...$('entryBody').rows].filter(tr => tr.querySelector('.e-design').value.trim() !== ''); }
+function majCount(){ const n = filledRows().length; $('vCount').value = n + ' ligne(s) remplie(s) – minimum ' + MIN_LIGNES; }
+function initRows(){ $('entryBody').innerHTML = ''; for (let i = 0; i < MIN_LIGNES; i++) addRow(); }
+initRows();
+$('entryBody').addEventListener('input', majCount);
+$('addRow').addEventListener('click', addRow);
+
+$('addTrip').addEventListener('click', () => {
+  const date = $('vDate').value;
+  if (!date) return msg('Veuillez choisir une date.');
+  document.querySelectorAll('#entryBody input').forEach(i => i.style.outline = '');
+  const bad = (tr, sel) => { tr.querySelector(sel).style.outline = '2px solid #e74c3c'; };
+  // ligne avec des montants mais sans désignation
+  for (const tr of $('entryBody').rows) {
+    const vide = !tr.querySelector('.e-design').value.trim();
+    const aDesValeurs = ['.e-client','.e-vente','.e-gasoil','.e-mat','.e-dep'].some(c => tr.querySelector(c).value.trim() !== '');
+    if (vide && aDesValeurs) { bad(tr, '.e-design'); return msg(`Ligne ${tr.querySelector('.n').textContent} : la désignation est manquante.`); }
+  }
+  const rows = filledRows();
+  // chaque désignation doit avoir une vente et un matériel
+  for (const tr of rows) {
+    const n = tr.querySelector('.n').textContent;
+    if (!(num(tr.querySelector('.e-vente').value) > 0)) { bad(tr, '.e-vente'); return msg(`Ligne ${n} : indiquez la vente (supérieure à 0).`); }
+    if (tr.querySelector('.e-mat').value.trim() === '') { bad(tr, '.e-mat'); return msg(`Ligne ${n} : indiquez le matériel (0 si aucun).`); }
+  }
+  if (rows.length < MIN_LIGNES)
+    return msg('Saisissez au moins 1 désignation pour cette date avant de valider.');
+  const dejaCompte = voyages.some(v => v.date === date);
+  rows.forEach((tr, i) => {
+    const q = c => tr.querySelector(c).value;
+    const vente = num(q('.e-vente'));
+    let gasoil = num(q('.e-gasoil')), mat = num(q('.e-mat')), depense = num(q('.e-dep'));
+    if ($('chargeUnique').checked && (i > 0 || dejaCompte)) { gasoil = 0; mat = 0; depense = 0; }
+    voyages.push({ id: Date.now() + i, date, design: q('.e-design').trim(), client: q('.e-client').trim(),
+      vente, gasoil, mat, depense, revenu: vente - (gasoil + mat + depense) });
+  });
+  save('voyages', voyages);
+  initRows();
+  renderVoyages();
+  msg(`${rows.length} lignes enregistrées pour le ${date}.`, true);
+});
+
+function renderVoyages(){
+  const t = {vente:0,gasoil:0,mat:0,depense:0,revenu:0};
+  let html = '', last = null;
+  voyages.forEach(v => {
+    if (last !== null && last !== v.date) html += '<tr class="sep"><td colspan="9"></td></tr>';
+    last = v.date;
+    Object.keys(t).forEach(k => t[k] += v[k]);
+    html += `<tr><td data-label="Date">${esc(v.date)}</td><td data-label="Désignation">${esc(v.design)}</td><td data-label="Client">${esc(v.client)}</td>
+      <td data-label="Vente">${fmt(v.vente)}</td><td data-label="Gas-oil">${fmt(v.gasoil)}</td><td data-label="Matériel">${fmt(v.mat)}</td><td data-label="Dépenses">${fmt(v.depense)}</td>
+      <td data-label="Revenu"><b class="${v.revenu >= 0 ? 'pos' : 'neg'}">${fmt(v.revenu)}</b></td>
+      <td><button class="del" title="Supprimer" onclick="delVoyage(${v.id})">🗑</button></td></tr>`;
+  });
+  $('tripBody').innerHTML = html;
+  $('tVente').textContent = fmt(t.vente); $('tGasoil').textContent = fmt(t.gasoil);
+  $('tMat').textContent = fmt(t.mat); $('tDep').textContent = fmt(t.depense); $('tRev').textContent = fmt(t.revenu);
+}
+function delVoyage(id){ askConfirm('Supprimer ce voyage ?', () => { voyages = voyages.filter(x => x.id !== id); save('voyages', voyages); renderVoyages(); }); }
+$('exportVoyages').addEventListener('click', () => {
+  if (!voyages.length) return msg('Aucun voyage à exporter.');
+  downloadCSV([['Date','Désignation','Client','Vente','Gas-oil','Matériel','Dépenses','Revenu'],
+    ...voyages.map(v => [v.date,v.design,v.client,v.vente,v.gasoil,v.mat,v.depense,v.revenu])],
+    'ventes_kiosque.csv');
+});
+
+$('salesForm').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('addVente').click(); } });
+$('tripForm').addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || e.target.tagName !== 'INPUT' || e.target.type === 'checkbox') return;
+  e.preventDefault();
+  const f = [...$('tripForm').querySelectorAll('input:not([readonly]):not([type=checkbox])')];
+  const nxt = f[f.indexOf(e.target) + 1];
+  if (nxt) nxt.focus();
+});
+
+renderVentes();
+renderVoyages();
+</script>
+</body>
+</html>
