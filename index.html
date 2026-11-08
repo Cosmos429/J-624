@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETS-J624 – Gestion Graviers, Sables et Voyages</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+<div id="modal" class="modal"><div><p id="modalTxt"></p><button class="btn" id="modalYes">Oui</button><button class="btn blue" id="modalNo">Non</button></div></div>
+<nav>
+  <button data-page="ventes" class="active">GESTION DE VENTES</button>
+  <button data-page="voyages">BILAN-VOYAGES</button>
+</nav>
+
+<div class="container">
+  <h1>BIENVENUE CHEZ ETS-J624</h1>
+
+  <!-- ===================== VENTES ===================== -->
+  <section id="ventes" class="page active">
+    <h2>Ajouter une vente</h2>
+    <div id="salesForm">
+      <div class="form-group">
+        <div><label for="product">Produit :</label>
+          <select id="product" required><option value="">Sélectionner un produit</option></select></div>
+        <div><label for="quantity">Quantité :</label>
+          <div class="qte-row"><input type="number" id="quantity" min="0.1" step="0.1" value="1" required>
+            <select id="unite" title="Unité de vente"></select></div></div>
+      </div>
+      <div class="form-group">
+        <div><label for="client">Client :</label>
+          <input type="text" id="client" placeholder="Nom du client" required></div>
+        <div><label for="sdate">Date :</label>
+          <input type="date" id="sdate" required></div>
+        <div><label>Prix unitaire :</label>
+          <input type="text" id="unitPrice" readonly></div>
+      </div>
+      <label class="check"><input type="checkbox" id="paye" checked> Paiement confirmé</label>
+      <div class="center"><button type="button" id="addVente" class="btn">➕ Ajouter la vente</button></div>
+    </div>
+
+    <h2>Historique des ventes</h2>
+    <div class="stats">
+      <div class="stat paid"><h3>Total Encaissé</h3><p><span id="totalPaid">0</span> Fcfa</p></div>
+      <div class="stat pending"><h3>Total Impayés</h3><p><span id="totalPending">0</span> Fcfa</p></div>
+    </div>
+    <div class="center"><button class="btn blue" id="exportVentes">⬇ Exporter en Excel (.xlsx)</button></div>
+    <div class="table-wrap">
+    <table class="cards">
+      <thead><tr><th>Date</th><th>Produit</th><th>Quantité</th><th>Prix Unitaire</th><th>Client</th><th>Total</th><th>Statut</th><th></th></tr></thead>
+      <tbody id="salesTable"></tbody>
+    </table></div>
+    <div class="total">Total des ventes : <span id="totalAmount">0</span> Fcfa</div>
+  </section>
+
+  <!-- ===================== VOYAGES ===================== -->
+  <section id="voyages" class="page">
+    <h2>Bilan-Voyages</h2>
+    <div id="tripForm">
+      <div class="form-group">
+        <div><label for="vDate">Date :</label><input type="date" id="vDate" required></div>
+        <div><label>Lignes remplies :</label><input type="text" id="vCount" readonly></div>
+      </div>
+      <div class="table-wrap">
+      <table class="entry cards">
+        <thead><tr><th>#</th><th>Désignation</th><th>Client</th><th>Vente (FCFA)</th><th>Gas-oil</th><th>Matériel</th><th>Dépenses (F.Route/Salaire)</th><th></th></tr></thead>
+        <tbody id="entryBody"></tbody>
+      </table></div>
+      <label class="check"><input type="checkbox" id="chargeUnique"> Compter gas-oil, matériel et dépenses une seule fois par jour (1re ligne seulement)</label>
+      <div class="center">
+        <button type="button" id="addRow" class="btn blue">➕ Ajouter une ligne</button>
+        <button type="button" id="addTrip" class="btn">✔ Ajouter (clôturer la journée)</button>
+      </div>
+      <p class="hint">Pour une même date, saisissez au moins 1 désignation avec sa vente et son matériel, puis validez avec « Ajouter ». Entrée = champ suivant.</p>
+    </div>
+    <button class="btn blue" id="exportVoyages">⬇ Exporter en Excel (.xlsx)</button>
+    <div class="table-wrap">
+    <table class="cards">
+      <thead><tr><th>Date</th><th>Désignation</th><th>Client</th><th>Vente</th><th>Gas-oil</th><th>Matériel</th><th>Dépenses</th><th>Revenu</th><th></th></tr></thead>
+      <tbody id="tripBody"></tbody>
+      <tfoot><tr>
+        <td colspan="3" class="tot-label">TOTAUX</td>
+        <td id="tVente" data-label="Vente">0</td><td id="tGasoil" data-label="Gas-oil">0</td><td id="tMat" data-label="Matériel">0</td><td id="tDep" data-label="Dépenses">0</td><td id="tRev" data-label="Revenu">0</td><td></td>
+      </tr></tfoot>
+    </table></div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
