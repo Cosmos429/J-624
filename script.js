@@ -125,40 +125,47 @@ function cleSemaine(d){
   return `${an}-S${String(sem).padStart(2, '0')} (du ${f(lun)} au ${f(dim)})`;
 }
 const CATEGORIES = ['Sable', 'Gravier 5-25', 'Gravier 5-15'];
-function ligneTotaux(k, o){ return [k, ...CATEGORIES.map(c => dec(o.c[c] || 0))]; }
+/* Total vendu en Fcfa d'une catégorie (toutes unités) */
+const totalFcfa = cat => Math.round(ventes.filter(v => v.produit === cat).reduce((a, v) => a + v.total, 0) * 100) / 100;
+/* Par catégorie : quantité en m³ (ventes en m³), puis le total vendu en Fcfa en bas de chaque colonne */
 function totauxPar(cleFn, titre, colonne){
   const m = {};
   ventes.forEach(v => {
     const k = cleFn(v.date);
-    m[k] = m[k] || {q: 0, n: 0, c: {}};
-    m[k].q += v.qte; m[k].n++;
-    m[k].c[v.produit] = (m[k].c[v.produit] || 0) + v.qte;
+    m[k] = m[k] || {};
+    if (uniteDe(v) === 'm³') m[k][v.produit] = (m[k][v.produit] || 0) + v.qte;
   });
-  return [[''], [titre], [colonne, ...CATEGORIES],
-    ...Object.keys(m).sort().map(k => ligneTotaux(k, m[k]))];
+  return [[''], [titre], [colonne, ...CATEGORIES.map(c => c + ' (m³)')],
+    ...Object.keys(m).sort().map(k => [k, ...CATEGORIES.map(c => dec(m[k][c] || 0))]),
+    ['TOTAL VENDU (Fcfa)', ...CATEGORIES.map(totalFcfa)]];
 }
 function exportVentesCSV(){
-  const general = {q: 0, n: ventes.length, c: {}};
-  ventes.forEach(v => { general.q += v.qte; general.c[v.produit] = (general.c[v.produit] || 0) + v.qte; });
   downloadCSV([['Date','Produit','Quantité','Unité','Prix Unitaire','Client','Total','Statut'],
     ...ventes.map(v => [v.date,v.produit,dec(v.qte),uniteDe(v),v.prix,v.client,v.total,v.paye?'Payé':'Non payé']),
     ...totauxPar(d => d, 'TOTAL PAR JOUR', 'Jour'),
     ...totauxPar(cleSemaine, 'TOTAL PAR SEMAINE', 'Semaine'),
     ...totauxPar(d => d.slice(0, 7), 'TOTAL PAR MOIS', 'Mois'),
-    ...CATS_BAS.flatMap(cat => [[''], ['QUANTITÉ VENDUE – ' + cat], ['Jour', 'Quantité'],
-      ...qteParCategorie(cat, d => d).map(([k, q]) => [k, dec(q)]),
-      [''], ['Semaine', 'Quantité'],
-      ...qteParCategorie(cat, cleSemaine).map(([k, q]) => [k, dec(q)])])
+    ...CATS_BAS.flatMap(cat => [[''], ['QUANTITÉ VENDUE – ' + cat],
+      ...[['Jour', d => d], ['Semaine', cleSemaine], ['Mois', d => d.slice(0, 7)]].flatMap(([lib, fn]) => [
+        [''], [lib, 'Quantité (m³)'],
+        ...agregCategorie(cat, fn).map(([k, q]) => [k, dec(q)]),
+        ['Total (Fcfa)', totalFcfa(cat)]])])
     ],
     `Rapport_Ventes_${today()}.csv`);
 }
 
-/* Quantité vendue d'une catégorie, regroupée par période (sans totaliser) */
+/* Pour une catégorie, par période : quantité en m³ (ventes en m³) et total vendu en Fcfa (toutes unités) */
 const CATS_BAS = ['Gravier 5-25', 'Gravier 5-15', 'Sable'];
-function qteParCategorie(cat, cleFn){
+function agregCategorie(cat, cleFn){
   const m = {};
-  ventes.forEach(v => { if (v.produit === cat) { const k = cleFn(v.date); m[k] = (m[k] || 0) + v.qte; } });
-  return Object.keys(m).sort().map(k => [k, Math.round(m[k] * 10) / 10]);
+  ventes.forEach(v => {
+    if (v.produit !== cat) return;
+    const k = cleFn(v.date);
+    const o = m[k] = m[k] || {q: 0, t: 0};
+    if (uniteDe(v) === 'm³') o.q += v.qte;
+    o.t += v.total;
+  });
+  return Object.keys(m).sort().map(k => [k, Math.round(m[k].q * 10) / 10, Math.round(m[k].t * 100) / 100]);
 }
 
 /* ---------- Export Excel (.xlsx) mis en forme ---------- */
@@ -216,19 +223,30 @@ async function telechargerXLSX(wb, nom){
   a.download = nom; a.click();
 }
 
-/* Quantités vendues par catégorie et par période (sans totalisation) */
+/* Par catégorie et par période : quantité en m³, avec le total vendu en Fcfa en bas de chaque colonne */
 function feuilleRecap(wb, feuille, titre, nomTable, colonne, cleFn, largeur){
   const m = {};
   ventes.forEach(v => {
     const k = cleFn(v.date);
     m[k] = m[k] || {};
-    m[k][v.produit] = (m[k][v.produit] || 0) + v.qte;
+    if (uniteDe(v) === 'm³') m[k][v.produit] = (m[k][v.produit] || 0) + v.qte;
   });
   const lignes = Object.keys(m).sort().map(k => [k, ...CATEGORIES.map(c => arr1(m[k][c] || 0))]);
-  feuilleTableau(wb, feuille, titre, nomTable, [
+  const ws = feuilleTableau(wb, feuille, titre, nomTable, [
     {name:colonne, width:largeur},
-    ...CATEGORIES.map(c => ({name:c, width:16, fmt:FMT_QTE}))
+    ...CATEGORIES.map(c => ({name:c + ' (m³)', width:18, fmt:FMT_QTE}))
   ], lignes, true);
+  /* Ligne du bas : total vendu en Fcfa pour chaque catégorie */
+  const rf = 3 + lignes.length + 1;
+  const fond = {type:'pattern', pattern:'solid', fgColor:{argb:'FFE8EEF3'}};
+  const l = ws.getCell(rf, 1);
+  l.value = 'TOTAL VENDU (Fcfa)'; l.font = {bold:true}; l.fill = fond; l.border = {top:BORD, left:BORD, bottom:BORD, right:BORD};
+  CATEGORIES.forEach((c, i) => {
+    const x = ws.getCell(rf, 2 + i);
+    x.value = totalFcfa(c); x.numFmt = FMT_MONTANT; x.font = {bold:true, color:{argb:'FF1E8449'}};
+    x.fill = fond; x.alignment = {horizontal:'right'}; x.border = {top:BORD, left:BORD, bottom:BORD, right:BORD};
+  });
+  ws.getColumn(1).width = Math.max(largeur, 20);
 }
 
 $('exportVentes').addEventListener('click', async () => {
@@ -259,45 +277,62 @@ $('exportVentes').addEventListener('click', async () => {
       l.value = lib; l.font = {bold:true}; l.alignment = {horizontal:'right'};
       c.value = val; c.numFmt = FMT_MONTANT; c.font = {bold:true, color:{argb:col}};
     });
-    /* Bas de la feuille : quantité vendue par catégorie, par jour et par semaine */
+    /* Bas de la feuille : par catégorie, quantité (m³) par jour, semaine et mois, avec le total vendu (Fcfa) en bas */
     const bord = {top:BORD, left:BORD, bottom:BORD, right:BORD};
     const entete = c => { c.fill = {type:'pattern', pattern:'solid', fgColor:{argb:'FF2C3E50'}};
-      c.font = {bold:true, color:{argb:'FFFFFFFF'}}; c.alignment = {horizontal:'center'}; };
+      c.font = {bold:true, color:{argb:'FFFFFFFF'}}; c.alignment = {horizontal:'center'}; c.border = bord; };
+    const nombre = (c, v, f) => { c.value = v; c.numFmt = f; c.alignment = {horizontal:'right'}; c.border = bord; };
+    const fond = {type:'pattern', pattern:'solid', fgColor:{argb:'FFE8EEF3'}};
+    const totalCell = (c, v) => { nombre(c, v, FMT_MONTANT); c.font = {bold:true, color:{argb:'FF1E8449'}}; c.fill = fond; };
+    const libTotal = c => { c.value = 'Total (Fcfa)'; c.font = {bold:true}; c.fill = fond; c.border = bord; };
     let r = r0 + 4;
     CATS_BAS.forEach(cat => {
-      const jours = qteParCategorie(cat, d => d), sem = qteParCategorie(cat, cleSemaine);
+      const jours = agregCategorie(cat, d => d), sem = agregCategorie(cat, cleSemaine),
+            mois = agregCategorie(cat, d => d.slice(0, 7)), tot = totalFcfa(cat);
       ws.mergeCells(r, 1, r, 7);
       const tt = ws.getCell(r, 1);
-      tt.value = 'Quantité vendue – ' + cat;
+      tt.value = 'Quantité vendue (m³) – ' + cat;
       tt.font = {bold:true, size:12, color:{argb:'FFFFFFFF'}};
       tt.fill = {type:'pattern', pattern:'solid', fgColor:{argb:'FF2980B9'}};
       r++;
       ws.mergeCells(r, 4, r, 6);
-      ws.getCell(r, 1).value = 'Jour'; ws.getCell(r, 2).value = 'Quantité';
-      ws.getCell(r, 4).value = 'Semaine'; ws.getCell(r, 7).value = 'Quantité';
-      [1, 2, 4, 5, 6, 7].forEach(c => { const x = ws.getCell(r, c); entete(x); x.border = bord; });
+      [[1,'Jour'],[2,'Quantité (m³)'],[4,'Semaine'],[7,'Quantité (m³)']].forEach(([c, t]) => { ws.getCell(r, c).value = t; });
+      [1, 2, 4, 5, 6, 7].forEach(c => entete(ws.getCell(r, c)));
       r++;
       const n = Math.max(jours.length, sem.length);
       for (let i = 0; i < n; i++, r++) {
         if (jours[i]) {
-          const a = ws.getCell(r, 1), b = ws.getCell(r, 2);
-          a.value = dateXL(jours[i][0]); a.numFmt = FMT_DATE; a.alignment = {horizontal:'center'};
-          b.value = jours[i][1]; b.numFmt = FMT_QTE; b.alignment = {horizontal:'right'};
-          a.border = bord; b.border = bord;
+          const a = ws.getCell(r, 1);
+          a.value = dateXL(jours[i][0]); a.numFmt = FMT_DATE; a.alignment = {horizontal:'center'}; a.border = bord;
+          nombre(ws.getCell(r, 2), jours[i][1], FMT_QTE);
         }
         if (sem[i]) {
           ws.mergeCells(r, 4, r, 6);
-          const a = ws.getCell(r, 4), b = ws.getCell(r, 7);
+          const a = ws.getCell(r, 4);
           a.value = sem[i][0]; a.alignment = {horizontal:'left'};
-          b.value = sem[i][1]; b.numFmt = FMT_QTE; b.alignment = {horizontal:'right'};
-          [4, 5, 6, 7].forEach(c => ws.getCell(r, c).border = bord);
+          [4, 5, 6].forEach(c => ws.getCell(r, c).border = bord);
+          nombre(ws.getCell(r, 7), sem[i][1], FMT_QTE);
         }
       }
+      /* Total Fcfa en bas du tableau des jours et du tableau des semaines */
+      libTotal(ws.getCell(r, 1)); totalCell(ws.getCell(r, 2), tot);
+      ws.mergeCells(r, 4, r, 6); libTotal(ws.getCell(r, 4)); [5, 6].forEach(c => ws.getCell(r, c).border = bord);
+      totalCell(ws.getCell(r, 7), tot);
+      r += 2;
+      [[1,'Mois'],[2,'Quantité (m³)']].forEach(([c, t]) => { const x = ws.getCell(r, c); x.value = t; entete(x); });
       r++;
+      mois.forEach(([k, q]) => {
+        const a = ws.getCell(r, 1);
+        a.value = k; a.alignment = {horizontal:'center'}; a.border = bord;
+        nombre(ws.getCell(r, 2), q, FMT_QTE);
+        r++;
+      });
+      libTotal(ws.getCell(r, 1)); totalCell(ws.getCell(r, 2), tot);
+      r += 2;
     });
-    feuilleRecap(wb, 'Par jour', 'Total des quantités par jour', 'TableJour', 'Jour', d => d, 16);
-    feuilleRecap(wb, 'Par semaine', 'Total des quantités par semaine', 'TableSemaine', 'Semaine', cleSemaine, 40);
-    feuilleRecap(wb, 'Par mois', 'Total des quantités par mois', 'TableMois', 'Mois', d => d.slice(0, 7), 14);
+    feuilleRecap(wb, 'Par jour', 'Quantités vendues (m³) par jour', 'TableJour', 'Jour', d => d, 16);
+    feuilleRecap(wb, 'Par semaine', 'Quantités vendues (m³) par semaine', 'TableSemaine', 'Semaine', cleSemaine, 40);
+    feuilleRecap(wb, 'Par mois', 'Quantités vendues (m³) par mois', 'TableMois', 'Mois', d => d.slice(0, 7), 14);
     await telechargerXLSX(wb, `Rapport_Ventes_${today()}.xlsx`);
     msg('Fichier Excel téléchargé.', true);
   } catch (e) { console.error(e); msg('Erreur lors de la création du fichier Excel.'); }
