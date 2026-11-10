@@ -52,23 +52,27 @@ $('sdate').value = today();
 
 function majPrix(){
   const p = TARIFS[$('product').value];
-  $('unitPrice').value = p ? fmt(p[$('unite').value]) + ' Fcfa' : '';
+  /* Pré-remplit avec le tarif officiel (valeur exacte), que l'utilisateur peut ensuite modifier */
+  $('unitPrice').value = p ? p[$('unite').value] : '';
 }
+/* Total exact (évite les erreurs de virgule flottante, ex. 11000 × 0,3) */
+const calcTotal = (prix, qte) => Math.round(prix * qte * 100) / 100;
 $('product').addEventListener('change', majPrix);
 $('unite').addEventListener('change', majPrix);
 
 $('addVente').addEventListener('click', () => {
   if (!$('product').value || !$('client').value.trim() || !(parseFloat($('quantity').value) > 0) || !$('sdate').value)
     return msg('Veuillez remplir tous les champs (produit, quantité, client, date).');
+  const prix = parseFloat($('unitPrice').value);
+  if (!(prix >= 0)) return msg('Veuillez indiquer un prix unitaire valide.');
   const produit = $('product').value, unite = $('unite').value;
   const qte = parseFloat($('quantity').value);
-  const prix = TARIFS[produit][unite];
   ventes.push({
     id: Date.now(), date: $('sdate').value, produit, unite, qte, prix,
-    client: $('client').value.trim(), total: prix * qte, paye: $('paye').checked
+    client: $('client').value.trim(), total: calcTotal(prix, qte), paye: $('paye').checked
   });
   save('ventes', ventes);
-  $('client').value = ''; $('quantity').value = 1; $('paye').checked = true;
+  $('client').value = ''; $('quantity').value = 1; $('paye').checked = true; majPrix();
   renderVentes();
   msg('Vente ajoutée.', true);
 });
@@ -79,13 +83,20 @@ function renderVentes(){
     v.paye ? paid += v.total : pending += v.total;
     return `<tr>
       <td data-label="Date">${esc(v.date)}</td><td data-label="Produit">${esc(v.produit)}</td><td data-label="Quantité">${v.qte} ${esc(uniteDe(v))}</td>
-      <td data-label="Prix unitaire">${fmt(v.prix)}</td><td data-label="Client">${esc(v.client)}</td><td data-label="Total">${fmt(v.total)}</td>
+      <td data-label="Prix unitaire"><input type="number" class="prix-edit" min="0" step="1" value="${v.prix}" title="Modifier le prix unitaire" onchange="editPrix(${v.id}, this.value)"></td><td data-label="Client">${esc(v.client)}</td><td data-label="Total">${fmt(v.total)}</td>
       <td data-label="Statut"><button type="button" class="status-btn ${v.paye ? 'status-paid' : 'status-pending'}" onclick="toggleVente(${v.id})">${v.paye ? 'Payé' : 'Non payé'}</button></td>
       <td><button class="del" title="Supprimer" onclick="delVente(${v.id})">🗑</button></td></tr>`;
   }).join('');
   $('totalPaid').textContent = fmt(paid);
   $('totalPending').textContent = fmt(pending);
   $('totalAmount').textContent = fmt(paid + pending);
+}
+function editPrix(id, val){
+  const v = ventes.find(x => x.id === id), p = parseFloat(val);
+  if (!v) return;
+  if (!(p >= 0)) { msg('Prix unitaire invalide.'); return renderVentes(); }
+  v.prix = p; v.total = calcTotal(p, v.qte);
+  save('ventes', ventes); renderVentes(); msg('Prix modifié.', true);
 }
 function toggleVente(id){ const v = ventes.find(x => x.id === id); if (v){ v.paye = !v.paye; save('ventes', ventes); renderVentes(); } }
 function delVente(id){ askConfirm('Supprimer cette vente ?', () => { ventes = ventes.filter(x => x.id !== id); save('ventes', ventes); renderVentes(); }); }
@@ -225,7 +236,7 @@ $('exportVentes').addEventListener('click', async () => {
       {name:'Total (Fcfa)', width:16, fmt:FMT_MONTANT, total:true},
       {name:'Statut', width:13, align:'center'}
     ], ventes.map((v, i) => [dateXL(v.date), v.produit, arr1(v.qte), uniteDe(v), v.prix, v.client,
-      {formula:`C${4 + i}*E${4 + i}`, result:v.total}, v.paye ? 'Payé' : 'Non payé']));
+      {formula:`ROUND(C${4 + i}*E${4 + i},2)`, result:v.total}, v.paye ? 'Payé' : 'Non payé']));
     ventes.forEach((v, i) => {
       ws.getCell(4 + i, 8).font = {bold:true, color:{argb: v.paye ? 'FF1E8449' : 'FFC0392B'}};
     });
