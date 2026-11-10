@@ -54,7 +54,15 @@ function majPrix(){
   const p = TARIFS[$('product').value];
   /* Pré-remplit avec le tarif officiel (valeur exacte), que l'utilisateur peut ensuite modifier */
   $('unitPrice').value = p ? p[$('unite').value] : '';
+  majTotalForm();
 }
+/* Total en direct = quantité × prix unitaire */
+function majTotalForm(){
+  const q = parseFloat($('quantity').value), p = parseFloat($('unitPrice').value);
+  $('formTotal').value = (q > 0 && p >= 0) ? calcTotal(p, q) : '';
+}
+$('quantity').addEventListener('input', majTotalForm);
+$('unitPrice').addEventListener('input', majTotalForm);
 /* Total exact (évite les erreurs de virgule flottante, ex. 11000 × 0,3) */
 const calcTotal = (prix, qte) => Math.round(prix * qte * 100) / 100;
 $('product').addEventListener('change', majPrix);
@@ -65,11 +73,14 @@ $('addVente').addEventListener('click', () => {
     return msg('Veuillez remplir tous les champs (produit, quantité, client, date).');
   const prix = parseFloat($('unitPrice').value);
   if (!(prix >= 0)) return msg('Veuillez indiquer un prix unitaire valide.');
+  /* Le total du formulaire (calculé automatiquement, mais modifiable) fait foi */
+  const totalSaisi = parseFloat($('formTotal').value);
+  if (!(totalSaisi >= 0)) return msg('Veuillez indiquer un total valide.');
   const produit = $('product').value, unite = $('unite').value;
   const qte = parseFloat($('quantity').value);
   ventes.push({
     id: Date.now(), date: $('sdate').value, produit, unite, qte, prix,
-    client: $('client').value.trim(), total: calcTotal(prix, qte), paye: $('paye').checked
+    client: $('client').value.trim(), total: totalSaisi, paye: $('paye').checked
   });
   save('ventes', ventes);
   $('client').value = ''; $('quantity').value = 1; $('paye').checked = true; majPrix();
@@ -236,7 +247,7 @@ $('exportVentes').addEventListener('click', async () => {
       {name:'Total (Fcfa)', width:16, fmt:FMT_MONTANT, total:true},
       {name:'Statut', width:13, align:'center'}
     ], ventes.map((v, i) => [dateXL(v.date), v.produit, arr1(v.qte), uniteDe(v), v.prix, v.client,
-      {formula:`ROUND(C${4 + i}*E${4 + i},2)`, result:v.total}, v.paye ? 'Payé' : 'Non payé']));
+      (Math.abs(calcTotal(v.prix, v.qte) - v.total) < 0.005 ? {formula:`ROUND(C${4 + i}*E${4 + i},2)`, result:v.total} : v.total), v.paye ? 'Payé' : 'Non payé']));
     ventes.forEach((v, i) => {
       ws.getCell(4 + i, 8).font = {bold:true, color:{argb: v.paye ? 'FF1E8449' : 'FFC0392B'}};
     });
