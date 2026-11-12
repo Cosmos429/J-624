@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ETS-J624 – Gestion Graviers, Sables et Voyages</title>
+<title>ETS-J624</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -41,6 +41,29 @@
       <label class="check"><input type="checkbox" id="paye" checked> Paiement confirmé</label>
       <div class="center"><button type="button" id="addVente" class="btn">➕ Ajouter la vente</button></div>
     </div>
+
+    <h2>Rechercher / modifier une vente</h2>
+<div id="searchForm">
+  <div class="form-group">
+    <div><label for="sClient">Nom du client :</label>
+      <input type="text" id="sClient" placeholder="Nom (même partiel)"></div>
+    <div><label for="sDate">Date de l'achat :</label>
+      <input type="date" id="sDate"></div>
+  </div>
+  <div class="center">
+    <button type="button" id="sGo" class="btn blue">🔍 Rechercher</button>
+    <button type="button" id="sReset" class="btn gray">Effacer</button>
+  </div>
+  <p id="sInfo" class="hint"></p>
+  <div id="sResult" style="display:none">
+    <div class="table-wrap">
+      <table class="cards">
+        <thead><tr><th>Date</th><th>Produit</th><th>Quantité</th><th>Total</th><th>Client (modifiable)</th><th>Statut (modifiable)</th><th></th></tr></thead>
+        <tbody id="sBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
     <h2>Historique des ventes</h2>
     <div class="stats">

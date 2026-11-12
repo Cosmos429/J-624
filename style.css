@@ -83,3 +83,10 @@ img,table{max-width:100%}
   table.entry tr{background:#f9fafb}
 }
 .pos{color:#155724}.neg{color:#c0392b}
+
+.btn.gray{background:#7f8c8d}.btn.gray:hover{background:#626d6e}
+#searchForm .btn{margin:4px}
+.s-edit{width:100%;min-width:130px;padding:6px}
+@media (max-width:700px){
+  table.cards td select{width:60%;flex:1}
+}
